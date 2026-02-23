@@ -50,7 +50,9 @@ def analyze_file(file_path: str) -> dict:
     bpm, _, _, _, _ = es.RhythmExtractor2013(method="degara")(audio)
 
     # Loudness & energy
-    loudness = float(es.Loudness()(audio))
+    loudness_extractor = es.LoudnessEBUR128(sampleRate=SAMPLE_RATE)
+    _, _, loudness, _ = loudness_extractor(audio)
+    loudness = float(loudness)
     energy   = min(1.0, float(es.RMS()(audio)) * 10)
 
     # Danceability

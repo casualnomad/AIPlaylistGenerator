@@ -8,6 +8,12 @@ import type Database from 'better-sqlite3';
 // Supported audio formats
 const AUDIO_EXTENSIONS = ['mp3', 'flac', 'aac', 'm4a', 'ogg', 'wav', 'wv', 'ape', 'opus'];
 
+/**
+ * MusicBrainz folksonomy tags that describe artwork, packaging, or other
+ * non-musical attributes — useless or harmful for vibe matching.
+ */
+const GENRE_BLOCKLIST = /\bon cover\b|\bcover\b|\bcolou?r\b|\bred\b|\bblue\b|\bblack\b|\bwhite\b|\bgreen\b|\byellow\b|\bpurple\b|\borange\b|\bpink\b|\bskull\b|\banimal\b|\bartwork\b|\bphotograph\b|\bfemale\b|\bmale\b|\bvocalist\b|\bsolo\b|\bgroup\b|\bband\b|\bloc:\b|\bconcept album\b|\blive\b|\bcompilation\b|\btribute\b|\bremix\b|\bcollection\b|\bsoundtrack\b/i;
+
 export interface TrackMetadata {
   file_path: string;
 
@@ -62,6 +68,11 @@ function joinArr(arr: (string | null | undefined)[] | undefined): string | null 
   if (!arr || arr.length === 0) return null;
   const filtered = arr.filter((s): s is string => !!s);
   return filtered.length > 0 ? filtered.join('; ') : null;
+}
+
+/** Filter out MusicBrainz folksonomy noise from genre lists */
+function filterGenres(genres: string[]): string[] {
+  return genres.filter(g => g && !GENRE_BLOCKLIST.test(g.trim()));
 }
 
 /**
@@ -137,11 +148,12 @@ async function extractMetadata(filePath: string): Promise<TrackMetadata | null> 
     }
 
     // All genres: standard common.genre + Picard's custom ab:genre tags
+    // Filter out MusicBrainz folksonomy noise (artwork descriptors, colors, etc.)
     const allGenres = [
       ...(common.genre ?? []),
       ...(getAllNative(['----:com.apple.iTunes:ab:genre', 'ab:genre', 'TXXX:ab:genre'])?.split('; ') ?? []),
     ];
-    const genre = joinArr([...new Set(allGenres)]);
+    const genre = joinArr(filterGenres([...new Set(allGenres)]));
 
     // Mood: standard field + Picard's custom ab:mood tags
     const mood =
