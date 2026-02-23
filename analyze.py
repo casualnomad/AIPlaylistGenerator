@@ -16,6 +16,7 @@ import argparse
 import sqlite3
 import os
 import time
+import numpy as np
 import multiprocessing as mp
 from multiprocessing import Pool, Queue, Manager
 import queue
@@ -50,8 +51,8 @@ def analyze_file(file_path: str) -> dict:
     bpm, _, _, _, _ = es.RhythmExtractor2013(method="degara")(audio)
 
     # Loudness & energy
-    loudness_extractor = es.LoudnessEBUR128(sampleRate=SAMPLE_RATE)
-    _, _, loudness, _ = loudness_extractor(audio)
+    stereo = np.column_stack([audio, audio]).astype(np.float32)  # LoudnessEBUR128 expects stereo input
+    _, _, loudness, _ = es.LoudnessEBUR128(sampleRate=SAMPLE_RATE)(stereo)
     loudness = float(loudness)
     energy   = min(1.0, float(es.RMS()(audio)) * 10)
 
