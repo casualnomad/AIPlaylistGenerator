@@ -76,7 +76,10 @@ export function initDb(db: Database.Database): void {
     spectral_centroid REAL,
     spectral_rolloff  REAL,
     spectral_flux     REAL,
-    zero_crossing_rate REAL
+    zero_crossing_rate REAL,
+    lyrics_raw      TEXT,
+    lyrics_summary  TEXT,
+    lyrics_fetched  INTEGER DEFAULT 0
   );
 `);
 

@@ -231,7 +231,8 @@ def main():
     elapsed = time.time() - start
     print(f"\n\n✅ Analyzed {done} tracks in {int(elapsed)}s"
           + (f" ({errors} failed)" if errors else ""))
-    print("\nRun 'npm run retext && npm run embed' to update embeddings!")
+    print("\nRun 'npm run lyrics && npm run retext && npm run embed' to update embeddings!")
+
 
 
 if __name__ == "__main__":

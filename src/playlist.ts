@@ -13,7 +13,7 @@ const PLAYLISTS_DIR = path.join(__dirname, '../playlists');
 const ollama = new Ollama({ host: 'http://localhost:11434' });
 
 // Change this to whatever chat model you have pulled in Ollama
-export const CHAT_MODEL = 'Qwen2.5:7b';
+export const CHAT_MODEL = 'llama3.2:3b';
 
 interface TrackRow {
   id: number;
