@@ -4,13 +4,14 @@ AI-powered playlist generator using your local music library, Ollama, and vector
 
 ## How it works
 
-1. **Scan** — reads all metadata (title, artist, genre, BPM, mood, credits, etc.) from every audio file via MusicBrainz Picard tags
-2. **Analyze** — runs Essentia audio analysis on each file, extracting energy, valence, danceability, acousticness, instrumentalness, key, and more
-3. **Retext** — rebuilds the metadata text blob combining file tags + acoustic features into natural language
-4. **Embed** — converts each track's metadata into a vector using `nomic-embed-text` via Ollama (one-time, runs locally)
-5. **Search** — when you describe a vibe, it finds similar tracks via vector similarity
-6. **Curate** — sends the top candidates to a local LLM to make the final playlist
-7. **Export** — saves as `.m3u` files your media player can open
+1. **Scan** — reads all metadata from every audio file including MusicBrainz Picard tags (mood, multiple genres, credits). Filters out non-musical folksonomy noise automatically.
+2. **Analyze** — runs Essentia on every file using all CPU cores in parallel, extracting energy, valence, danceability, acousticness, instrumentalness, key, BPM, spectral character, and more directly from the audio waveform
+3. **Lyrics** — fetches lyrics from LRCLib (free, no API key) for every track, stores raw lyrics and generates a concise LLM summary of theme, tone, and imagery
+4. **Retext** — combines file tags + acoustic features + lyrics into a rich natural language description per track, including synthesized emotional arc and sound profile descriptions
+5. **Embed** — converts each track's description into a vector using `nomic-embed-text` via Ollama
+6. **Search** — when you describe a vibe, finds similar tracks via vector similarity
+7. **Curate** — sends top candidates to a local LLM to make the final playlist
+8. **Export** — saves as `.m3u` files your media player can open
 
 Everything lives in a single `data/library.db` SQLite file.
 
@@ -41,7 +42,7 @@ Required for acoustic analysis:
 pip3 install essentia
 ```
 
-> Essentia is the same audio analysis library that powered Spotify's Echo Nest. It extracts energy, valence, danceability, key, acousticness and more directly from the audio waveform.
+> Essentia is the same audio analysis library that powered Spotify's Echo Nest. It extracts energy, valence, danceability, key, acousticness and more directly from the audio waveform — no metadata required.
 
 ### 3. Install Ollama
 Download from [ollama.com](https://ollama.com) — it's a simple Mac app. Once installed, Ollama runs automatically in the background.
@@ -50,6 +51,7 @@ Download from [ollama.com](https://ollama.com) — it's a simple Mac app. Once i
 ```bash
 ollama pull nomic-embed-text   # for embeddings (~274MB)
 ollama pull llama3.1:8b        # for playlist curation (~4.7GB) — best quality
+ollama pull llama3.2:3b        # for lyrics summarization (~2GB) — fast
 ```
 
 > See [Choosing a chat model](#choosing-a-chat-model) below for model recommendations based on your hardware.
@@ -67,13 +69,13 @@ npm install
 ```bash
 npm run scan ~/Music
 ```
-Crawls your music folder, extracts all metadata from file tags (including MusicBrainz Picard tags like mood and multiple genres), stores everything in the database. Fast — typically seconds even for large libraries.
+Crawls your music folder, extracts all metadata from file tags including MusicBrainz Picard tags (mood, multiple genres, full credits). Automatically filters out non-musical MusicBrainz folksonomy tags like `Animal On Cover`, `Red On Cover`, `Skull On Cover` so they don't pollute the embeddings. Fast — typically seconds even for large libraries.
 
 ### Step 2 — Acoustic analysis
 ```bash
 python3 analyze.py
 ```
-Runs Essentia on every audio file using **all available CPU cores** in parallel. Extracts energy, valence, danceability, acousticness, instrumentalness, speechiness, loudness, BPM, and key directly from the audio waveform. On an M3 Mac expect around **2 tracks/second** — a 4000 track library takes roughly 35 minutes.
+Runs Essentia on every audio file using **all available CPU cores** in parallel. Extracts energy, valence, danceability, acousticness, instrumentalness, speechiness, loudness, BPM, key, spectral brightness, texture dynamism, and grit. On an M3 Mac expect around **2 tracks/second** — a 4000 track library takes roughly 35 minutes.
 
 ```bash
 python3 analyze.py --limit 20 --verbose   # test on 20 tracks first
@@ -81,21 +83,41 @@ python3 analyze.py --all                  # re-analyze everything (overwrite exi
 python3 analyze.py --workers 4            # manually set worker count
 ```
 
-> Note: Run `python3 analyze.py` directly rather than via `npm run analyze` — npm doesn't pass arguments through to Python scripts cleanly.
+> Run `python3 analyze.py` directly rather than via `npm run analyze` — npm doesn't pass arguments through to Python scripts cleanly.
 
-### Step 3 — Rebuild metadata text
+### Step 3 — Fetch lyrics
+```bash
+npm run lyrics
+```
+Fetches lyrics from **LRCLib** (free, no API key, huge catalog) for every track using 5 concurrent requests. Stores both the raw lyrics (first 1000 chars) and a concise LLM-generated summary of theme, emotional tone, and imagery using `llama3.2:3b`. Instrumental tracks are detected and labeled automatically.
+
+```bash
+npm run lyrics -- --refetch       # re-fetch all tracks (overwrite existing)
+npm run lyrics -- --limit=50      # only fetch N tracks
+```
+
+### Step 4 — Rebuild metadata text
 ```bash
 npm run retext
 ```
-Combines file tag metadata with Essentia acoustic features into a rich natural language description for each track. This is what gets embedded — things like "Energy: very high. Valence: happy. Danceability: very danceable. Acousticness: electronic." Also resets embedding status so Step 4 picks up all changes.
+Combines everything into a rich natural language description for each track — the actual text that gets embedded. Includes:
 
-### Step 4 — Generate embeddings
+- File tag metadata (genre, mood, credits, label, era)
+- Acoustic features described in natural language ("euphoric, joyful, uplifting" not just `valence: 0.87`)
+- Spectral character: brightness, texture dynamism, grit/distortion
+- Synthesized emotional arc ("aggressive, intense, dark energy — angry, powerful, confrontational")
+- Synthesized sound profile ("acoustic instrumental — think classical, jazz, folk guitar, unplugged")
+- Lyrical summary and raw lyrics excerpt
+
+Also resets embedding status so Step 5 picks up all changes.
+
+### Step 5 — Generate embeddings
 ```bash
 npm run embed
 ```
 Converts every track's metadata text into a vector. On Apple Silicon with `nomic-embed-text` expect around **35 tracks/second** — a 4000 track library takes roughly 2 minutes. Only runs on tracks that haven't been embedded yet (or were reset by `retext`).
 
-### Step 5 — Generate playlists!
+### Step 6 — Generate playlists!
 
 **Vibe mode** — describe what you want:
 ```bash
@@ -105,7 +127,8 @@ npm run playlist "sunday morning coffee and chill"
 npm run playlist "90s nostalgia"
 npm run playlist "focus and concentration, no lyrics"
 npm run playlist "high energy electronic, very danceable"
-npm run playlist "sad acoustic, low energy"
+npm run playlist "sad acoustic, introspective lyrics"
+npm run playlist "aggressive minor key, dark energy"
 ```
 
 **Cluster mode** — let AI discover themes in your library:
@@ -145,12 +168,17 @@ This project is optimized for libraries tagged with **MusicBrainz Picard**. Pica
 - MusicBrainz IDs for every track, album, and artist
 - Accurate BPM, key, and release info
 
-The more complete your Picard tags, the better the vibe matching. Combined with Essentia acoustic analysis, each track gets a comprehensive profile that covers both cultural context (genre, era, label) and sonic character (energy, danceability, acousticness).
+The scanner automatically filters out MusicBrainz folksonomy noise — tags describing artwork (`Animal On Cover`, `Skull On Cover`), colors (`Red On Cover`), and packaging descriptors that pollute genre matching. Only musically meaningful genres make it through.
+
+The more complete your Picard tags, the better the vibe matching. Combined with Essentia acoustic analysis and LRCLib lyrics, each track gets a comprehensive profile covering cultural context, sonic character, and lyrical content.
 
 ---
 
 ## Choosing a chat model
 
+Two models are used: one for **playlist curation** (needs to be smart, good at JSON), one for **lyrics summarization** (needs to be fast).
+
+### Playlist curation model
 Edit `CHAT_MODEL` in `src/playlist.ts`:
 
 ```ts
@@ -159,14 +187,22 @@ export const CHAT_MODEL = 'llama3.1:8b';
 
 | Model | Size | Notes |
 |---|---|---|
-| `llama3.1:8b` | ~4.7GB | **Recommended.** Best playlist curation quality |
+| `llama3.1:8b` | ~4.7GB | **Recommended.** Best curation quality, reliable JSON |
 | `qwen2.5:7b` | ~4.4GB | Excellent JSON compliance, great for cluster mode |
 | `llama3.2:3b` | ~2GB | Fast, good quality — best for lower-powered machines |
 | `qwen2.5:3b` | ~2GB | Great structured output for smaller machines |
 | `mistral` | ~4.4GB | Solid but llama3.1:8b is better |
-| `gemma2:2b` | ~1.6GB | Lightweight option |
 
-For **cluster mode** especially, 7B+ models produce dramatically better results than 3B models. The larger models reliably follow the "give me exactly N playlists" instruction where smaller ones tend to get lazy.
+For **cluster mode** especially, 7B+ models produce dramatically better results — smaller models tend to return fewer playlists than requested and with fewer tracks.
+
+### Lyrics summarization model
+Edit `SUMMARY_MODEL` in `src/lyrics.ts`:
+
+```ts
+const SUMMARY_MODEL = 'llama3.2:3b';
+```
+
+The 3B model is fast enough for this task and produces good summaries. No need to use the larger model here.
 
 ---
 
@@ -201,11 +237,12 @@ To switch to a different music library or change embedding models:
 rm data/library.db
 npm run scan ~/Music
 npm run analyze
+npm run lyrics
 npm run retext
 npm run embed
 ```
 
-The database is recreated automatically on the next scan. If you're just **adding new tracks** to an existing library you don't need to reset — run the full pipeline and each step will pick up only what's new or changed.
+The database is recreated automatically on the next scan. If you're just **adding new tracks** to an existing library, you don't need to reset — run the full pipeline and each step picks up only what's new or changed.
 
 ---
 
@@ -216,11 +253,12 @@ music-ai/
 ├── src/
 │   ├── index.ts       CLI entry point
 │   ├── db.ts          Database setup & schema
-│   ├── scanner.ts     Music file scanning & metadata extraction
+│   ├── scanner.ts     Music file scanning, metadata extraction & genre filtering
 │   ├── embedder.ts    Vector embedding via Ollama
-│   ├── retext.ts      Rebuilds metadata text with acoustic features
+│   ├── retext.ts      Rebuilds metadata text with acoustic + lyrical features
+│   ├── lyrics.ts      LRCLib fetch + LLM summarization
 │   └── playlist.ts    Playlist generation (vibe + cluster)
-├── analyze.py         Essentia acoustic feature extraction
+├── analyze.py         Parallel Essentia acoustic feature extraction
 ├── data/
 │   └── library.db     SQLite database (all metadata + vectors)
 ├── playlists/         Generated M3U files
@@ -281,24 +319,28 @@ Add temporary error logging to `src/embedder.ts` to see the actual error:
 Harmless — divide-by-zero at the start before any tracks complete. Resolves automatically after the first 10 tracks.
 
 ### Cluster mode returns fewer playlists than requested
-Smaller models (3B) struggle with large structured outputs. Switch to `llama3.1:8b` or `qwen2.5:7b` in `src/playlist.ts`. Also make sure the sample size isn't overwhelming the model — the default samples 100 tracks per cluster request.
+Smaller models (3B) struggle with large structured outputs. Switch to `llama3.1:8b` or `qwen2.5:7b` in `src/playlist.ts`.
 
-### Essentia analysis errors on some files
-Some files have unusual sample rates or encoding. The analyzer skips failed files (`analyzed = -1`) and continues. Run with the error flag visible:
-```bash
-python3 analyze.py --limit 20
-```
-Errors print inline so you can see which files are problematic.
-
-### Playlist JSON parse errors
-Some models don't reliably return valid JSON. Try `llama3.1:8b` or `qwen2.5:7b`. Log the raw output to debug:
+### Lyrics not being fetched
+LRCLib can be slow — the default timeout is 30 seconds. If you're on a slow connection increase it in `src/lyrics.ts`:
 ```ts
-const raw = await askOllama(aiPrompt);
-console.log('\n--- Model output ---\n' + raw + '\n---\n');
+signal: AbortSignal.timeout(60000),
+```
+Also check LRCLib is reachable:
+```bash
+curl "https://lrclib.net/api/get?track_name=Attaboy&artist_name=Aesop+Rock"
+```
+
+### Weird genres like `Animal On Cover` or `Red On Cover`
+These are MusicBrainz folksonomy tags. The scanner filters them automatically via `GENRE_BLOCKLIST` in `scanner.ts`. If you see others slipping through, add them to the regex. Then rescan:
+```bash
+npm run scan ~/Music
+npm run retext
+npm run embed
 ```
 
 ### Essentia analysis is slow (under 1 track/second)
-The analyzer uses all CPU cores by default. If it's still slow, check you're not reading from a slow source (USB flash drive, network mount). Copy your library to a local SSD first. You can also manually cap workers:
+Check you're not reading from a slow source (USB flash drive, network mount). Copy your library to a local SSD first. You can also manually cap workers:
 ```bash
 python3 analyze.py --workers 4
 ```
@@ -307,4 +349,16 @@ python3 analyze.py --workers 4
 Harmless warning from Essentia about malformed frames in some files. The analysis still completes. Suppress it:
 ```bash
 python3 analyze.py 2>/dev/null
+```
+
+### Essentia analysis errors on some files
+Some files have unusual encoding. The analyzer marks them `analyzed = -1` and continues. See which files failed:
+```bash
+python3 analyze.py --limit 20 --verbose
+```
+
+### Playlist JSON parse errors
+Some models don't reliably return valid JSON. Try `llama3.1:8b` or `qwen2.5:7b`. Log the raw output to debug by adding this after the `askOllama` call in `src/playlist.ts`:
+```ts
+console.log('\n--- Model output ---\n' + raw + '\n---\n');
 ```
