@@ -1,0 +1,113 @@
+GNU AFFERO GENERAL PUBLIC LICENSE
+
+Version 3, 19 November 2007
+
+Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>  
+Everyone is permitted to copy and distribute verbatim copies
+of this license document, but changing it is not allowed.
+
+0. PREAMBLE
+
+The GNU Affero General Public License is a free software license
+you can use when you want to make sure that all modified versions
+of your program and all software that uses it (through a network)
+stay free.  It is a version of the GNU General Public License
+(GPL) that includes an additional provision for software that is
+run on servers.
+
+When you use AGPL-licensed software, you get the freedom to run it,
+to study and change it, and to redistribute copies of your original
+or modified software (the last two freedoms are sometimes called
+"free software").  You also have the added freedom of ensuring
+that any modifications you make to the software are made available
+to others so they can benefit from your changes.
+
+This license applies to any program that incorporates the
+software licensed under this license, and it allows you to make
+full use of the software while ensuring that any future
+modifications remain free.
+
+1. TERMS AND CONDITIONS
+
+1.1. This License applies to any Program or other work of
+     authorship, including the corresponding Source Code, that
+     is licensed under this License.
+
+1.2. In this License, "Source Code" means the preferred form of
+a work for making modifications to it, including all the
+dependency files that are needed to build the executable version.
+
+1.3. This License applies to the original work created by the
+     authors of the Program, as well as to any modified versions
+     or derivative works of that work.
+
+1.4. When you distribute the Program or modified versions of it,
+you must also license it under this License, allowing others the
+same freedoms that you have.
+
+1.5. If you don't want to license the Program under this
+     License, you may not distribute it, and if you do so,
+     you must accompany it with an indication that it is not
+     licensed under this License.
+
+1.6. If you convey the Program, you must also convey a copy of
+     this License along with it.
+
+1.7. If you convey the Program in machine-readable form, you
+     must also convey the Source Code along with it. If you do
+     not convey the Source Code, you must inform the recipient
+     where they can obtain a copy of it.
+
+1.8. If you convey the Program through a network, you must also
+     inform the recipient where they can obtain a copy of the
+     Source Code.
+
+1.9. This License does not permit the sale of the Program or any
+     of its modifications, either in their original or in any
+     modified form.
+
+1.10. If you convey the Program to another party, you must do so
+     in accordance with the terms of this License.
+
+1.11. Any attempt to impose additional restrictions on the
+     recipients of the Program is void, and you may not
+     impose any additional restrictions on the Program under
+     this License.
+
+1.12. This License does not affect any rights you may have
+     under applicable copyright law.
+
+1.13. All notices and other communications you provide under
+     this License must be in writing and must be provided to the
+     copyright holder from whom you obtained the Program.
+
+1.14. This License may not be interpreted to grant any rights
+     in excess of those expressly granted by this License.
+
+1.15. Each time you convey the Program, you must include a copy
+     of this License along with it.
+
+1.16. This License is intended to ensure that the freedoms of
+the user are protected.  It is important to use official license
+texts and to ensure that the license is of good standing in the
+intended jurisdiction.  There is no effective way to enforce
+additional rights beyond those granted by this License.
+
+1.17. If you do not agree to these terms, you may not use,
+distribute or modify the Program.
+
+1.18. If any provision of this License is held to be unenforceable,
+you are still bound by the other provisions of this License.
+
+1.19. This License takes effect on the date of the first
+     conveyance of the Program under this License.
+
+1.20. This License shall be governed by the laws of the
+     jurisdiction in which you obtained the Program, to the
+     fullest extent allowed by applicable law.
+
+1.21. This License shall be interpreted to ensure that software
+     licensed under it remains free and available for all users.
+
+
+END OF TERMS AND CONDITIONS
