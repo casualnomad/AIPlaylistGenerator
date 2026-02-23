@@ -71,14 +71,17 @@ Crawls your music folder, extracts all metadata from file tags (including MusicB
 
 ### Step 2 — Acoustic analysis
 ```bash
-npm run analyze
+python3 analyze.py
 ```
-Runs Essentia on every audio file to extract acoustic features: energy, valence, danceability, acousticness, instrumentalness, speechiness, loudness, BPM, and key. This decodes actual audio so it's slower — expect **1–3 tracks/second** depending on your machine and file format. A 4000 track library takes 30–60 minutes.
+Runs Essentia on every audio file using **all available CPU cores** in parallel. Extracts energy, valence, danceability, acousticness, instrumentalness, speechiness, loudness, BPM, and key directly from the audio waveform. On an M3 Mac expect around **2 tracks/second** — a 4000 track library takes roughly 35 minutes.
 
 ```bash
-npm run analyze -- --limit 10   # test on 10 tracks first
-npm run analyze -- --all        # re-analyze everything (overwrite existing)
+python3 analyze.py --limit 20 --verbose   # test on 20 tracks first
+python3 analyze.py --all                  # re-analyze everything (overwrite existing)
+python3 analyze.py --workers 4            # manually set worker count
 ```
+
+> Note: Run `python3 analyze.py` directly rather than via `npm run analyze` — npm doesn't pass arguments through to Python scripts cleanly.
 
 ### Step 3 — Rebuild metadata text
 ```bash
@@ -292,4 +295,16 @@ Some models don't reliably return valid JSON. Try `llama3.1:8b` or `qwen2.5:7b`.
 ```ts
 const raw = await askOllama(aiPrompt);
 console.log('\n--- Model output ---\n' + raw + '\n---\n');
+```
+
+### Essentia analysis is slow (under 1 track/second)
+The analyzer uses all CPU cores by default. If it's still slow, check you're not reading from a slow source (USB flash drive, network mount). Copy your library to a local SSD first. You can also manually cap workers:
+```bash
+python3 analyze.py --workers 4
+```
+
+### `AudioLoader: Invalid frame, skipping it`
+Harmless warning from Essentia about malformed frames in some files. The analysis still completes. Suppress it:
+```bash
+python3 analyze.py 2>/dev/null
 ```
