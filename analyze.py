@@ -16,7 +16,6 @@ import argparse
 import sqlite3
 import os
 import time
-import numpy as np
 import multiprocessing as mp
 from multiprocessing import Pool, Queue, Manager
 import queue
@@ -54,7 +53,13 @@ def analyze_file(file_path: str) -> dict:
     stereo = np.column_stack([audio, audio]).astype(np.float32)  # LoudnessEBUR128 expects stereo input
     _, _, loudness, _ = es.LoudnessEBUR128(sampleRate=SAMPLE_RATE)(stereo)
     loudness = float(loudness)
-    energy   = min(1.0, float(es.RMS()(audio)) * 10)
+    #energy   = min(1.0, float(es.RMS()(audio)) * 10)
+
+    rms = float(es.RMS()(audio))
+    # Normalize RMS to 0-1 using a log scale — matches human loudness perception
+    # RMS typically ranges 0.01–0.3 for music; log scale spreads it out properly
+    import math
+    energy = max(0.0, min(1.0, (math.log10(max(rms, 1e-6)) + 2) / 2.5))
 
     # Danceability
     danceability, _ = es.Danceability()(audio)
