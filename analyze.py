@@ -129,11 +129,21 @@ def analyze_file(file_path: str) -> dict:
 
 def worker_fn(args):
     """Top-level worker function for multiprocessing (must be picklable)."""
+    import signal
+
+    def timeout_handler(signum, frame):
+        raise TimeoutError("Analysis timed out")
+
     track_id, file_path = args
     try:
+        # Kill any track that takes more than 60 seconds
+        signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(60)
         features = analyze_file(file_path)
+        signal.alarm(0)  # cancel alarm on success
         return (track_id, file_path, features, None)
     except Exception as e:
+        signal.alarm(0)
         return (track_id, file_path, None, str(e))
 
 
