@@ -197,8 +197,7 @@ def main():
     # Use imap_unordered so results stream back as soon as each track finishes
     with Pool(processes=num_workers) as pool:
         try:
-          results = pool.imap_unordered(worker_fn, work_items, chunksize=1)
-          for track_id, file_path, features, error in results:
+          for track_id, file_path, features, error in pool.imap(worker_fn, work_items, chunksize=1):
             if features:
                 db.execute("""
                     UPDATE tracks SET
@@ -244,8 +243,8 @@ def main():
                 + (f" ❌ {errors} errors" if errors else ""),
                 end="", flush=True
             )
-        except (StopIteration, IndexError):
-            pass  # pool exhausted — normal on Python 3.12
+        except Exception as e:
+            print(f"\n⚠️ Pool error: {e}")
 
     db.commit()
     db.close()
